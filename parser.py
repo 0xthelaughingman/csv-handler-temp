@@ -35,7 +35,10 @@ for index, row in df.iterrows():
             if pd.isnull(value):
                 break
             else:
-                query_string = query_string + str(value)
+                if query_string == "":
+                    query_string = query_string + str(value)
+                else:
+                    query_string = query_string + "," + str(value)
 
     print("INDEX: ", index, " ID:", query_id, " TITLE: ", query_title, " QUERY_STRING: ", query_string)
 
