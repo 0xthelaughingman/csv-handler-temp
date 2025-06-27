@@ -1,5 +1,6 @@
 import pandas as pd
 
+# change names=range(n) to whatever the maximum fields you encounter via pandas exception msgs..
 df = pd.read_csv("download-my-queries.csv", header=None, names=range(19424), low_memory=False)
 
 print(df)
