@@ -189,3 +189,4 @@ cython_debug/
 .idea/
 
 *.csv
+query_collection.txt
