@@ -1,7 +1,9 @@
 import pandas as pd
 
+
 def write_to_file(filename:str, query_list:list):
-    #query_tuple.append([index, query_id, query_title, query_string2])
+    # query_tuple.append([index, query_id, query_title, query_string2])
+
     with open(filename, "w", encoding="utf-8") as fob:
         for item in query_list:
             fob.write("=======================================================================================\n")
@@ -14,6 +16,7 @@ def write_to_file(filename:str, query_list:list):
 
 
 if __name__ == "__main__":
+
     # change names=range(n) to whatever the maximum fields you encounter via pandas exception msgs..
     df = pd.read_csv("download-my-queries.csv", header=None, names=range(100000), low_memory=False)
 
