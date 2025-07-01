@@ -1,75 +1,76 @@
-import pandas as pd
+import argparse
+import csv
+from pathlib import Path
+from tqdm import tqdm
 
 
-def write_to_file(filename:str, query_list:list):
-    # query_tuple.append([index, query_id, query_title, query_string2])
+def main():
+    """Main function to parse CSV and extract queries."""
+    parser = argparse.ArgumentParser(
+        description="Parse a Flipside query export CSV and format the SQL queries into a text file."
+    )
+    parser.add_argument(
+        "input_file",
+        type=str,
+        help="Path to the input CSV file (e.g., 'download-my-queries.csv')."
+    )
+    args = parser.parse_args()
 
-    with open(filename, "w", encoding="utf-8") as fob:
-        for item in query_list:
-            fob.write("=======================================================================================\n")
-            fob.write("=======================================================================================\n")
-            fob.write("QUERY_NO: " + str(item[0]) + "\n")
-            fob.write("QUERY_ID: " + str(item[1]) + "\n")
-            fob.write("QUERY_TITLE: " + str(item[2]) + "\n\n")
-            fob.write("QUERY_STRING:\n\n")
-            fob.write(item[3] + "\n\n\n\n")
+    input_path = Path(args.input_file)
+    if not input_path.is_file():
+        print(f"Error: Input file not found at '{input_path}'")
+        return
 
+    output_path = input_path.with_suffix('.txt')
+
+    try:
+        # First, count rows for an accurate progress bar without loading the file into memory
+        with open(input_path, "r", encoding="utf-8") as f:
+            # Subtract 1 for the header row
+            total_rows = sum(1 for _ in f) - 1
+
+        # Process and write in a single pass to conserve memory
+        with open(input_path, "r", encoding="utf-8") as infile, \
+             open(output_path, "w", encoding="utf-8") as outfile:
+
+            reader = csv.reader(infile)
+            next(reader)  # Skip header row
+
+            for index, row in enumerate(tqdm(reader, total=total_rows, desc="Processing queries"), start=1):
+                if not row:  # Handle potential empty rows
+                    continue
+
+                query_id = row[0]
+                query_title = row[1]
+
+                # Collect all non-empty string values after the title as parts of the SQL
+                sql_parts = [part for part in row[2:] if part]
+                raw_query_string = ",".join(sql_parts)
+
+                '''
+                The below substring replacement operations will have to be fine-tuned as per User SQL writing style
+                '''
+                formatted_query = raw_query_string.replace("   ", "\n\t")
+                formatted_query = formatted_query.replace(" \t", "\n\t")
+                formatted_query = formatted_query.replace("UNION ALL", "\n\tUNION ALL\n")
+
+                # Write the formatted query directly to the output file
+                outfile.write("=======================================================================================\n")
+                outfile.write("=======================================================================================\n")
+                outfile.write(f"QUERY_NO: {index}\n")
+                outfile.write(f"QUERY_ID: {query_id}\n")
+                outfile.write(f"QUERY_TITLE: {query_title}\n\n")
+                outfile.write("QUERY_STRING:\n\n")
+                outfile.write(f"{formatted_query}\n\n\n\n")
+
+    except FileNotFoundError:
+        print(f"Error: Could not find the file at {input_path}")
+        return
+    except Exception as e:
+        print(f"An error occurred while processing the CSV: {e}")
+        return
+
+    print(f"\nSuccessfully wrote formatted queries to {output_path}")
 
 if __name__ == "__main__":
-
-    # change names=range(n) to whatever the maximum fields you encounter via pandas exception msgs..
-    df = pd.read_csv("download-my-queries.csv", header=None, names=range(100000), low_memory=False)
-
-    print(df)
-
-    query_tuple = []
-
-    for index, row in df.iterrows():
-        print("Current Row:", index)
-
-        if index == 0:
-            continue
-
-        item_counter = 0
-        query_id = None
-        query_title = None
-        query_string = ""
-
-        for col_name, value in row.items():
-
-            if item_counter == 0:
-                query_id = value
-                item_counter += 1
-                continue
-
-            elif item_counter == 1:
-                query_title = value
-                item_counter += 1
-                continue
-
-            else:
-                # print(col_name)
-                if pd.isnull(value):
-                    break
-                else:
-                    if query_string == "":
-                        query_string = query_string + str(value)
-                    else:
-                        query_string = query_string + "," + str(value)
-        '''
-        The below substring replacement operations will have to be fine-tuned as per User SQL writing style
-            - query_string1/query_string2 should beautify shit enough to be readable/legible...
-            - Probably needs regex based substitutions and not hardcoded substitutions as done here!
-            - DO KEEP IN MIND: each replacement/sub step changes the string! so the order in which subs are done MATTERS
-        '''
-        query_string1 = query_string.replace("   ", "\n\t")
-        query_string2 = query_string1.replace(" 	", "\n\t")
-        query_string3 = query_string2.replace("UNION ALL", "\n\tUNION ALL\n")
-        print("INDEX: ", index, " ID:", query_id, " TITLE: ", query_title, "\nQUERY_STRING:\n", query_string2)
-
-        query_tuple.append([index, query_id, query_title, query_string2])
-
-    write_to_file("query_collection.txt", query_tuple)
-
-
-
+    main()
